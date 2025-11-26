@@ -1,65 +1,105 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
 
 export default function Home() {
+  const [tripText, setTripText] = useState("");
+  const [parsed, setParsed] = useState<any | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setParsed(null);
+
+    try {
+      const res = await fetch("/api/parse-trip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userRequest: tripText }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Request failed");
+      }
+
+      const data = await res.json();
+      setParsed(data);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center justify-center px-4">
+      <div className="max-w-xl w-full space-y-8">
+        <header className="space-y-2 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold">PilotPrompt</h1>
+          <p className="text-slate-300">
+            Built by <span className="font-semibold">Robin Linhart</span>. Type
+            your trip in plain English and let AI structure it.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+          <p className="text-xs text-slate-500">
+            Contact:{" "}
+            <a href="mailto:rlinhart99@gmail.com" className="underline">
+              rlinhart99@gmail.com
+            </a>
+          </p>
+        </header>
+
+        <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 md:p-6 space-y-4">
+          <h2 className="font-semibold text-lg">
+            New Trip Request (Parser Demo)
+          </h2>
+          <p className="text-sm text-slate-400">
+            Describe your trip. PilotPrompt will send it to an AI endpoint and
+            show the structured result.
+          </p>
+
+          <form className="space-y-3" onSubmit={handleSubmit}>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-300">
+                Describe your trip
+              </label>
+              <textarea
+                className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                rows={4}
+                placeholder='Example: "Dallas to Rome for a week in May, under $1800 total, no Spirit, at least 3★ hotel near the center."'
+                value={tripText}
+                onChange={(e) => setTripText(e.target.value)}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !tripText.trim()}
+              className="w-full rounded-lg bg-sky-500 hover:bg-sky-400 disabled:opacity-60 transition px-4 py-2 text-sm font-semibold text-slate-950"
+            >
+              {loading ? "Parsing..." : "Parse Trip with PilotPrompt"}
+            </button>
+          </form>
+
+          {error && <p className="text-sm text-red-400">Error: {error}</p>}
+
+          {parsed && (
+            <div className="mt-4 text-xs bg-slate-950 border border-slate-800 rounded-lg p-3 overflow-auto max-h-60">
+              <p className="mb-1 font-semibold text-slate-200">
+                Parsed trip data:
+              </p>
+              <pre>{JSON.stringify(parsed, null, 2)}</pre>
+            </div>
+          )}
+        </section>
+
+        <footer className="text-center text-[10px] text-slate-500">
+          © {new Date().getFullYear()} PilotPrompt · Built by Robin Linhart
+        </footer>
+      </div>
+    </main>
   );
 }
