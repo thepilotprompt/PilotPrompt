@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import supabaseAdmin from "@/lib/supabaseAdmin";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -39,8 +40,7 @@ Rules:
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { userRequest } = body;
+    const { userRequest } = await req.json();
 
     if (!userRequest || typeof userRequest !== "string") {
       return NextResponse.json(
@@ -49,14 +49,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 1) Ask OpenAI to parse the trip into structured JSON
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: `User request: "${userRequest}"\n\nReturn just the JSON.`,
-        },
+        { role: "user", content: userRequest },
       ],
       response_format: { type: "json_object" },
     });
@@ -70,9 +68,34 @@ export async function POST(req: NextRequest) {
     }
 
     const parsed = JSON.parse(content);
-    return NextResponse.json(parsed);
+
+    // 2) Save the original text + parsed JSON into Supabase
+    const { data, error } = await supabaseAdmin
+      .from("trips")
+      .insert({
+        user_email: "rlinhart99@gmail.com", // later this can be real users
+        original_text: userRequest,
+        parsed,
+      })
+      .select();
+
+    if (error) {
+      console.error("Supabase insert error (parse-trip):", error);
+      // still return parsed so UI works
+      return NextResponse.json(
+        { success: false, parsed, dbError: error.message },
+        { status: 200 }
+      );
+    }
+
+    // 3) Return what we parsed + the saved row
+    return NextResponse.json({
+      success: true,
+      parsed,
+      savedRow: data?.[0] ?? null,
+    });
   } catch (err: any) {
-    console.error("parse-trip error:", err);
+    console.error("parse-trip route error:", err);
     return NextResponse.json(
       { error: err.message || "Server error" },
       { status: 500 }

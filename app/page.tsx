@@ -21,12 +21,9 @@ export default function Home() {
         body: JSON.stringify({ userRequest: tripText }),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Request failed");
-      }
-
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Request failed");
+
       setParsed(data);
     } catch (err: any) {
       setError(err.message || "Something went wrong");
@@ -53,12 +50,10 @@ export default function Home() {
         </header>
 
         <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 md:p-6 space-y-4">
-          <h2 className="font-semibold text-lg">
-            New Trip Request (Parser Demo)
-          </h2>
+          <h2 className="font-semibold text-lg">New Trip Request</h2>
           <p className="text-sm text-slate-400">
-            Describe your trip. PilotPrompt will send it to an AI endpoint and
-            show the structured result.
+            Describe your trip. PilotPrompt will call an AI endpoint and show
+            you the structured result (and log it in the database).
           </p>
 
           <form className="space-y-3" onSubmit={handleSubmit}>
@@ -89,12 +84,21 @@ export default function Home() {
           {parsed && (
             <div className="mt-4 text-xs bg-slate-950 border border-slate-800 rounded-lg p-3 overflow-auto max-h-60">
               <p className="mb-1 font-semibold text-slate-200">
-                Parsed trip data:
+                Parsed response:
               </p>
               <pre>{JSON.stringify(parsed, null, 2)}</pre>
             </div>
           )}
         </section>
+
+        <div className="text-center text-xs text-slate-400">
+          <a
+            href="/trips"
+            className="underline text-sky-400 hover:text-sky-300"
+          >
+            View saved trips →
+          </a>
+        </div>
 
         <footer className="text-center text-[10px] text-slate-500">
           © {new Date().getFullYear()} PilotPrompt · Built by Robin Linhart
